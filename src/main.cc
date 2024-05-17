@@ -1,7 +1,7 @@
 #include <iostream>
-#include "./coroutine/coroutine.h"
+#include "./coroutine/original_co.h"
 
 int main(int argc, char *argv[]){
-    CO::Test();
+    co::original::Test();
     std::cout << "Hello World!" << std::endl;
 }
