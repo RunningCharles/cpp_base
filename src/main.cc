@@ -3,5 +3,5 @@
 
 int main(int argc, char *argv[]){
     Fun();
-    std::cout << "Hello, from cpp_base!\n";
+    std::cout << "Hello World!" << std::endl;
 }
