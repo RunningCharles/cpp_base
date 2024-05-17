@@ -2,6 +2,6 @@
 #include "./coroutine/coroutine.h"
 
 int main(int argc, char *argv[]){
-    Fun();
+    CO::Test();
     std::cout << "Hello World!" << std::endl;
 }
