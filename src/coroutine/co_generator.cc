@@ -136,16 +136,20 @@ Generator<int32_t> sequence() {
 }
 
 void Run() {
-  // auto gen = sequence();
-  auto gen = Generator<int32_t>::from(5, 4, 3, 2, 1);
-  for (int32_t i = 0; i < 15; i++) {
-    if (gen.has_next()) {
-      std::cout << gen.next() << std::endl;
-    } else {
-      break;
+  std::cout << "start run generator" << std::endl;
+  {
+    // auto gen = sequence();
+    auto gen = Generator<int32_t>::from(5, 4, 3, 2, 1);
+    for (int32_t i = 0; i < 15; i++) {
+      if (gen.has_next()) {
+        std::cout << gen.next() << std::endl;
+      } else {
+        break;
+      }
     }
   }
+  std::cout << "end run generator" << std::endl;
 }
 
 } // end namespace generator
-} // end namespace CO
+} // end namespace co
