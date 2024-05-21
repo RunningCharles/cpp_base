@@ -5,13 +5,14 @@
 namespace co {
 namespace generator {
 
+template <typename T>
 struct Generator {
 
   // 协程执行完成之后，外部读取值时抛出的异常
   class ExhausteException: std::exception {};
 
   struct promise_type {
-    int32_t value = -1;
+    T value;
     bool is_ready = false;
 
     // 开始执行时直接挂起等待外部调用 resume 获取下一个值
@@ -49,7 +50,7 @@ struct Generator {
     }
     
     // 将基本类型转化为 awaiter
-    // std::suspend_always await_transform(int32_t value) {
+    // std::suspend_always await_transform(T value) {
     //   std::cout << "generator await transform: " << this->value << " to " << value << std::endl;
     //   this->value = value;
     //   is_ready = true;
@@ -58,7 +59,7 @@ struct Generator {
 
     // 将 await_transform 替换为 yield_value，对应 co_await 调整为 co_yield
     // co_yield expr 等价于 co_await promise.yield_value(expr)
-    std::suspend_always yield_value(int32_t value) {
+    std::suspend_always yield_value(T value) {
       std::cout << "generator yield value: " << this->value << " to " << value << std::endl;
       this->value = value;
       is_ready = true;
@@ -108,7 +109,7 @@ struct Generator {
     }
   }
 
-  int32_t next() {
+  T next() {
     if (has_next()) {
       // 此时一定有值，is_ready 为 true 
       // 消费当前的值，重置 is_ready 为 false
@@ -120,7 +121,7 @@ struct Generator {
   }
 };
 
-Generator sequence() {
+Generator<int32_t> sequence() {
   for (int32_t i = 0; i < 10; i++) {
     // 使用 co_await 更多的关注点在挂起自己，等待别人上，而使用 co_yield 则是挂起自己传值出去
     // co_await i; // await_transform
