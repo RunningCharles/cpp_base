@@ -3,7 +3,7 @@
 #include "generator.h"
 
 namespace co {
-namespace original {
+namespace generator {
 
 struct Generator {
 
@@ -117,7 +117,7 @@ Generator sequence() {
   }
 }
 
-void RunGenerator() {
+void Run() {
   auto gen = sequence();
   for (int32_t i = 0; i < 15; i++) {
     if (gen.has_next()) {
@@ -128,9 +128,5 @@ void RunGenerator() {
   }
 }
 
-void Test() {
-  RunGenerator();
-}
-
-} // end namespace original
+} // end namespace generator
 } // end namespace CO

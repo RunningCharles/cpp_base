@@ -2,6 +2,6 @@
 #include "./coroutine/generator.h"
 
 int main(int argc, char *argv[]){
-    co::original::Test();
+    co::generator::Run();
     std::cout << "Hello World!" << std::endl;
 }

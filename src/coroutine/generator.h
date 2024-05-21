@@ -1,8 +1,8 @@
 
 namespace co {
-namespace original {
+namespace generator {
 
-void Test();
+void Run();
 
-} // end namespace original
+} // end namespace generator
 } // end namespace CO
