@@ -1,5 +1,5 @@
 #include <iostream>
-#include "./coroutine/original_co.h"
+#include "./coroutine/generator.h"
 
 int main(int argc, char *argv[]){
     co::original::Test();
