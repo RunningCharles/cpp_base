@@ -1,6 +1,6 @@
 #include<iostream>
 #include<coroutine>
-#include "generator.h"
+#include "co_generator.h"
 
 namespace co {
 namespace generator {
