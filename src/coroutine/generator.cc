@@ -49,9 +49,19 @@ struct Generator {
     }
     
     // 将基本类型转化为 awaiter
-    std::suspend_always await_transform(int32_t value) {
-      std::cout << "generator await transform: " << this->value << " to " << value << std::endl;
+    // std::suspend_always await_transform(int32_t value) {
+    //   std::cout << "generator await transform: " << this->value << " to " << value << std::endl;
+    //   this->value = value;
+    //   is_ready = true;
+    //   return {};
+    // }
+
+    // 将 await_transform 替换为 yield_value，对应 co_await 调整为 co_yield
+    // co_yield expr 等价于 co_await promise.yield_value(expr)
+    std::suspend_always yield_value(int32_t value) {
+      std::cout << "generator yield value: " << this->value << " to " << value << std::endl;
       this->value = value;
+      is_ready = true;
       return {};
     }
   };
@@ -86,7 +96,6 @@ struct Generator {
     if (!handle.promise().is_ready) {
       std::cout << "generator has next, hasn't done, not ready" << std::endl;
       handle.resume();
-      handle.promise().is_ready = true;
     }
     
     if (handle.done()) {
@@ -113,7 +122,9 @@ struct Generator {
 
 Generator sequence() {
   for (int32_t i = 0; i < 10; i++) {
-    co_await i;
+    // 使用 co_await 更多的关注点在挂起自己，等待别人上，而使用 co_yield 则是挂起自己传值出去
+    // co_await i; // await_transform
+    co_yield i; // yield_value
   }
 }
 
