@@ -1,5 +1,5 @@
-#include<iostream>
-#include<coroutine>
+#include <iostream>
+#include <coroutine>
 #include "co_generator.h"
 
 namespace co {
