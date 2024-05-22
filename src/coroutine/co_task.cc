@@ -47,27 +47,34 @@ struct Task {
   using promise_type = TaskPromise<R>;
 
   constexpr bool await_ready() const noexcept {
+    std::cout << "[" << &(handle.promise()) << "]" << "task await ready" << std::endl;
     return false;
   }
 
   // 当 task 执行完之后调用 resume
-  void await_suspend(std::coroutine_handle<> handle) noexcept {
-    finally([handle]() {
+  void await_suspend(std::coroutine_handle<promise_type> handle) noexcept {
+    std::cout << "[" << &(handle.promise()) << "]" << "task await suspend" << std::endl;
+    finally([handle, this]() {
+      std::cout << "[" << &(handle.promise()) << "]" << "task await suspend finally" << std::endl;
       handle.resume();
     });
   }
 
   // 协程恢复执行时，被等待的 Task 已经执行完，调用 get_result 来获取结果
   R await_resume() noexcept {
+    std::cout << "[" << &(handle.promise()) << "]" << "task await resume" << std::endl;
     return get_result();
   }
 
   R get_result() {
+    std::cout << "[" << &(handle.promise()) << "]" << "task get result" << std::endl;
     return handle.promise().get_result();
   }
 
   Task &then(std::function<void(R)> &&func) {
-    handle.promise().on_completed([func](auto result) {
+    std::cout << "[" << &(handle.promise()) << "]" << "task then" << std::endl;
+    handle.promise().on_completed([func, this](auto result) {
+      std::cout << "[" << &(handle.promise()) << "]" << "task then on completed" << std::endl;
       try {
         func(result.get_or_throw());
       } catch(std::exception& e) {
@@ -78,7 +85,9 @@ struct Task {
   }
 
   Task &catching(std::function<void(std::exception &)> && func) {
-    handle.promise().on_completed([func](auto result) {
+    std::cout << "[" << &(handle.promise()) << "]" << "task catching" << std::endl;
+    handle.promise().on_completed([func, this](auto result) {
+      std::cout << "[" << &(handle.promise()) << "]" << "task catching on completed" << std::endl;
       try {
         result.get_or_throw();
       } catch(std::exception& e) {
@@ -89,7 +98,11 @@ struct Task {
   }
 
   Task &finally(std::function<void()> &&func) {
-    handle.promise().on_completed([func](auto result) { func(); } );
+    std::cout << "[" << &(handle.promise()) << "]" << "task finally" << std::endl;
+    handle.promise().on_completed([func, this](auto result) {
+      std::cout << "[" << &(handle.promise()) << "]" << "task finally on completed" << std::endl;
+      func();
+    });
     return *this;
   }
 
@@ -103,7 +116,7 @@ struct Task {
     }
   }
 
-private:
+public:
   std::coroutine_handle<promise_type> handle;
 };
 
@@ -116,13 +129,13 @@ template <typename R>
 struct TaskPromise {
   // 协程立即执行，不进行挂起
   std::suspend_never initial_suspend() {
-    std::cout << "task initial suspend" << std::endl;
+    std::cout << "[" << this << "]" << "task initial suspend" << std::endl;
     return {};
   }
 
   // 执行结束后挂起，等待外部（task.handle.destroy()）销毁
   std::suspend_always final_suspend() noexcept {
-    std::cout << "task final suspend" << std::endl;
+    std::cout << "[" << this << "]" << "task final suspend" << std::endl;
     return {};
   }
 
@@ -220,8 +233,9 @@ Task<int> simple_task() {
 void Run() {
   std::cout << "start run task" << std::endl;
   {
-    auto simpleTask = simple_task();
-    simpleTask.then([](int i) {
+    auto task = simple_task();
+    std::cout << "[" << &task.handle.promise() << "]" << "run simple task" << std::endl;
+    task.then([](int i) {
       std::cout << "run simple task end, ret: " << i << std::endl;
     }).catching([](std::exception &e) {
       std::cerr << "run simple task failed, exception: " << e.what() << std::endl;
@@ -229,7 +243,7 @@ void Run() {
       std::cout << "run simple task finally" << std::endl;
     });;
     try {
-      auto i = simpleTask.get_result();
+      auto i = task.get_result();
       std::cout << "get task result, ret: " << i << std::endl;
     } catch (std::exception &e) {
       std::cerr << "get task result failed, exception: " << e.what() << std::endl;
