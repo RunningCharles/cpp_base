@@ -1,5 +1,6 @@
 #include <iostream>
 #include <list>
+#include <thread>
 #include <coroutine>
 #include <exception>
 #include "./co_task.h"
@@ -45,6 +46,22 @@ struct Task {
   // 声明 promise_type 为 TaskPromise 类型
   using promise_type = TaskPromise<R>;
 
+  constexpr bool await_ready() const noexcept {
+    return false;
+  }
+
+  // 当 task 执行完之后调用 resume
+  void await_suspend(std::coroutine_handle<> handle) noexcept {
+    finally([handle]() {
+      handle.resume();
+    });
+  }
+
+  // 协程恢复执行时，被等待的 Task 已经执行完，调用 get_result 来获取结果
+  R await_resume() noexcept {
+    return get_result();
+  }
+
   R get_result() {
     return handle.promise().get_result();
   }
@@ -54,7 +71,7 @@ struct Task {
       try {
         func(result.get_or_throw());
       } catch(std::exception& e) {
-        std::cerr << e.what() << '\n';
+        std::cerr << e.what() << std::endl;
       }
     });
     return *this;
@@ -88,36 +105,6 @@ struct Task {
 
 private:
   std::coroutine_handle<promise_type> handle;
-};
-
-/**
- * 协程等待体
-*/
-template <typename R>
-struct TaskAwaiter {
-  constexpr bool await_ready() const noexcept {
-    return false;
-  }
-
-  // 当 task 执行完之后调用 resume
-  void await_suspend(std::coroutine_handle<> handle) noexcept {
-    task.finally([handle]() {
-      handle.resume();
-    });
-  }
-
-  // 协程恢复执行时，被等待的 Task 已经执行完，调用 get_result 来获取结果
-  R await_resume() noexcept {
-    return task.get_result();
-  }
-
-  explicit TaskAwaiter(Task<R> &&task) noexcept : task(std::move(task)) {}
-  explicit TaskAwaiter(TaskAwaiter &&completion) noexcept : task(std::exchange(completion.task, {})) {}
-  TaskAwaiter(TaskAwaiter &) = delete;
-  TaskAwaiter &operator=(TaskAwaiter &) = delete;
-
-private:
-  Task<R> task;
 };
 
 /**
@@ -175,12 +162,6 @@ struct TaskPromise {
     return result->get_or_throw();
   }
 
-  // 为 Task 提供 co_await 支持
-  template <typename _R>
-  TaskAwaiter<_R> await_tranform(Task<_R> &&task) {
-    return TaskAwaiter<_R>(std::move(task));
-  }
-
   void on_completed(std::function<void(TaskResult<R>)> &&func) {
     std::unique_lock lock(completion_lock);
     if (result.has_value()) { // result 已经有值
@@ -212,9 +193,45 @@ private:
   std::list<std::function<void(TaskResult<R>)>> completion_callbacks;
 };
 
+Task<int> simple_task2() {
+  std::cout << "begin simple task 2" << std::endl;
+  using namespace std::chrono_literals;
+  std::this_thread::sleep_for(1s);
+  std::cout << "end simple task 2 after 1s" << std::endl;
+  co_return 2;
+}
+
+Task<int> simple_task3() {
+  std::cout << "begin simple task 3" << std::endl;
+  using namespace std::chrono_literals;
+  std::this_thread::sleep_for(2s);
+  std::cout << "end simple task 3 after 2s" << std::endl;
+  co_return 3;
+}
+
+Task<int> simple_task() {
+  std::cout << "begin simple task" << std::endl;
+  auto result2 = co_await simple_task2();
+  auto result3 = co_await simple_task3();
+  std::cout << "end simple task" << std::endl;
+  co_return 1 + result2 + result3;
+}
+
 void Run() {
   std::cout << "start run task" << std::endl;
   {
+    auto simpleTask = simple_task();
+    simpleTask.then([](int i) {
+      std::cout << "run simple task end, ret: " << i << std::endl;
+    }).catching([](std::exception &e) {
+      std::cerr << "run simple task failed, exception: " << e.what() << std::endl;
+    });
+    try {
+      auto i = simpleTask.get_result();
+      std::cout << "get task result, ret: " << i << std::endl;
+    } catch (std::exception &e) {
+      std::cerr << "get task result failed, exception: " << e.what() << std::endl;
+    }
   }
   std::cout << "end run task" << std::endl;
 }
