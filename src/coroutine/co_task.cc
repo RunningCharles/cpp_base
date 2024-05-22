@@ -225,7 +225,9 @@ void Run() {
       std::cout << "run simple task end, ret: " << i << std::endl;
     }).catching([](std::exception &e) {
       std::cerr << "run simple task failed, exception: " << e.what() << std::endl;
-    });
+    }).finally([]() {
+      std::cout << "run simple task finally" << std::endl;
+    });;
     try {
       auto i = simpleTask.get_result();
       std::cout << "get task result, ret: " << i << std::endl;
