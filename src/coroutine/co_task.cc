@@ -141,11 +141,13 @@ struct TaskPromise {
 
   // 构造协程的返回值对象 Task
   Task<R> get_return_object() {
+    std::cout << "[" << this << "]" << "task get return object" << std::endl;
     return Task{ std::coroutine_handle<TaskPromise>::from_promise(*this) };
   }
 
   // 将异常存入 result
   void unhandled_exception() {
+    std::cout << "[" << this << "]" << "task unhandled exception" << std::endl;
     std::lock_guard lock(completion_lock);
     result = TaskResult<R>(std::current_exception());
     // 通知 get_result 当中的 wait
@@ -156,6 +158,7 @@ struct TaskPromise {
 
   // 将返回值存入 result，对应于协程内部的 'co_return value'
   void return_value(R value) {
+    std::cout << "[" << this << "]" << "task return value" << std::endl;
     std::lock_guard lock(completion_lock);
     result = TaskResult<R>(std::move(value));
     // 通知 get_result 当中的 wait
@@ -165,6 +168,7 @@ struct TaskPromise {
   }
 
   R get_result() {
+    std::cout << "[" << this << "]" << "task get result" << std::endl;
     std::unique_lock lock(completion_lock);
     if (!result.has_value()) {
       // 如果 result 没有值，说明协程还没有运行完，等待值被写入再返回
@@ -176,6 +180,7 @@ struct TaskPromise {
   }
 
   void on_completed(std::function<void(TaskResult<R>)> &&func) {
+    std::cout << "[" << this << "]" << "task on completed" << std::endl;
     std::unique_lock lock(completion_lock);
     if (result.has_value()) { // result 已经有值
       auto value = result.value();
