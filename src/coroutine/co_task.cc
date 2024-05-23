@@ -100,6 +100,9 @@ public:
   std::coroutine_handle<promise_type> handle;
 };
 
+/**
+ * 协程任务等待体，通过 await_transform 将 task 转化为 awaiter
+*/
 template <typename R>
 struct TaskAwaiter {
   // 声明 promise_type 为 TaskPromise 类型
