@@ -46,26 +46,6 @@ struct Task {
   // 声明 promise_type 为 TaskPromise 类型
   using promise_type = TaskPromise<R>;
 
-  constexpr bool await_ready() const noexcept {
-    std::cout << "[" << &(handle.promise()) << "]" << "task await ready" << std::endl;
-    return false;
-  }
-
-  // 当 task 执行完之后调用 resume
-  void await_suspend(std::coroutine_handle<promise_type> handle) noexcept {
-    std::cout << "[" << &(handle.promise()) << "]" << "task await suspend" << std::endl;
-    finally([handle, this]() {
-      std::cout << "[" << &(handle.promise()) << "]" << "task await suspend finally" << std::endl;
-      handle.resume();
-    });
-  }
-
-  // 协程恢复执行时，被等待的 Task 已经执行完，调用 get_result 来获取结果
-  R await_resume() noexcept {
-    std::cout << "[" << &(handle.promise()) << "]" << "task await resume" << std::endl;
-    return get_result();
-  }
-
   R get_result() {
     std::cout << "[" << &(handle.promise()) << "]" << "task get result" << std::endl;
     return handle.promise().get_result();
@@ -120,6 +100,40 @@ public:
   std::coroutine_handle<promise_type> handle;
 };
 
+template <typename R>
+struct TaskAwaiter {
+  // 声明 promise_type 为 TaskPromise 类型
+  using promise_type = TaskPromise<R>;
+
+  constexpr bool await_ready() const noexcept {
+    std::cout << "[" << &(task.handle.promise()) << "]" << "task await ready" << std::endl;
+    return false;
+  }
+
+  // 当 task 执行完之后调用 resume
+  void await_suspend(std::coroutine_handle<promise_type> handle) noexcept {
+    std::cout << "[" << &(handle.promise()) << "]" << "task await suspend" << std::endl;
+    task.finally([handle, this]() {
+      std::cout << "[" << &(handle.promise()) << "]" << "task await suspend finally" << std::endl;
+      handle.resume();
+    });
+  }
+
+  // 协程恢复执行时，被等待的 Task 已经执行完，调用 get_result 来获取结果
+  R await_resume() noexcept {
+    std::cout << "[" << &(task.handle.promise()) << "]" << "task await resume" << std::endl;
+    return task.get_result();
+  }
+
+  explicit TaskAwaiter(Task<R> &&task) noexcept : task(std::move(task)) {}
+  explicit TaskAwaiter(TaskAwaiter &&completion) noexcept : task(std::exchange(completion.task, {})) {}
+  TaskAwaiter(TaskAwaiter &) = delete;
+  TaskAwaiter &operator=(TaskAwaiter &) = delete;
+
+private:
+  Task<R> task;
+};
+
 /**
  * promise_type 是连接协程内外的桥梁，想要拿到什么，找 promise_type 要
  * promise_type 可通过 std::coroutine_handle 的 promise 获取
@@ -165,6 +179,11 @@ struct TaskPromise {
     completion.notify_all();
     // 调用回调
     notify_callbacks();
+  }
+
+  template <typename _R>
+  TaskAwaiter<_R> await_transform(Task<_R> &&task) {
+    return TaskAwaiter<_R>(std::move(task));
   }
 
   R get_result() {
